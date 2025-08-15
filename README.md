@@ -8,6 +8,18 @@ A reusable GitHub action to set up Cloud Foundry and MTA tooling to deploy CAP a
 
 We recommend installing via the [GitHub marketplace](https://github.com/marketplace).
 
+### Usage
+
+```yaml
+- uses: cap-js/cf-setup@v1
+  with:
+    cf-api: ${{ vars.CF_API }}
+    cf-org: ${{ vars.CF_ORG }}
+    cf-space: ${{ vars.CF_SPACE }}
+    cf-username: ${{ vars.CF_USERNAME }}
+    cf-password: ${{ secrets.CF_PASSWORD }}
+```
+
 ## Support, Feedback, Contributing
 
 This project is open to feature requests/suggestions, bug reports etc. via [GitHub issues](https://github.com/cap-js/cf-setup/issues). Contribution and feedback are encouraged and always welcome. For more information about how to contribute, the project structure, as well as additional contribution information, see our [Contribution Guidelines](CONTRIBUTING.md).
