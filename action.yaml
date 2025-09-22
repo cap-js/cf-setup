@@ -8,7 +8,7 @@ inputs:
   cf-version:
     description: The version of the Cloud Foundry CLI to install
     required: false
-    default: "v8.14.1"
+    default: "8.14.1"
   cf-api:
     description: The Cloud Foundry API endpoint to connect to
     required: true
