@@ -1,8 +1,8 @@
-# cf-setup
+# SAP Cloud Application Programming Model setup action for Cloud Foundry
 
 ## About this project
 
-A reusable GitHub action to set up Cloud Foundry and MTA tooling to deploy CAP applications.
+A reusable GitHub action to set up Cloud Foundry and Multi-Target Application (MTA) tooling to deploy SAP Cloud Application Programming Model (CAP) applications.
 
 ## Requirements and Setup
 

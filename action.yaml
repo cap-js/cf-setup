@@ -1,4 +1,4 @@
-name: Cloud Foundry Setup
+name: CAP setup for Cloud Foundry
 description: Installs dependencies for Cloud Foundry deployment
 branding:
   icon: terminal
