@@ -13,13 +13,14 @@ We recommend installing via the [GitHub marketplace](https://github.com/marketpl
 ### Usage
 
 ```yaml
-- uses: cap-js/cf-setup@v1
+- uses: cap-js/cf-setup@v2
   with:
-    cf-api: ${{ vars.CF_API }}
-    cf-org: ${{ vars.CF_ORG }}
-    cf-space: ${{ vars.CF_SPACE }}
-    cf-username: ${{ vars.CF_USERNAME }}
-    cf-password: ${{ secrets.CF_PASSWORD }}
+    api: ${{ vars.CF_API }}
+    org: ${{ vars.CF_ORG }}
+    space: ${{ vars.CF_SPACE }}
+    username: ${{ vars.CF_USERNAME }}
+    password: ${{ secrets.CF_PASSWORD }}
+    origin: ${{ vars.CF_ORIGIN }}
 ```
 
 ## Support, Feedback, Contributing
