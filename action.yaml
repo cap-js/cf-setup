@@ -34,13 +34,19 @@ runs:
     - name: Install CF CLI
       shell: bash
       run: |
-        set -e
+        set -euo pipefail
+
         echo "Using CF_VERSION=${{ inputs.version }}"
         echo "Using CF_API=${{ inputs.api }}"
-        curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${{ inputs.version }}&source=github" -o cf-cli.tgz
-        mkdir cf-cli && tar -xzf cf-cli.tgz -C cf-cli
+
+        curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${{ inputs.version }}&source=github" \
+          -o cf-cli.tgz
+
+        mkdir -p cf-cli
+        tar -xzf cf-cli.tgz -C cf-cli
         chmod +x cf-cli/cf
-        echo "${PWD}/cf-cli" >> $GITHUB_PATH
+
+        echo "${PWD}/cf-cli" >> "$GITHUB_PATH"
 
     - name: Install MBT
       shell: bash
@@ -54,10 +60,13 @@ runs:
       shell: bash
       run: |
         cf api "${{ inputs.api }}"
-        ORIGIN="${{ inputs.origin }}"
+        export CF_PASSWORD='${{ inputs.password }}'
+        ORIGIN='${{ inputs.origin }}'
+
         if [ -n "$ORIGIN" ]; then
-          cf auth "${{ inputs.username }}" "${{ inputs.password }}" --origin "$ORIGIN"
+          cf auth "${{ inputs.username }}" --origin "$ORIGIN"
         else
-          cf auth "${{ inputs.username }}" "${{ inputs.password }}"
+          cf auth "${{ inputs.username }}"
         fi
+
         cf target -o "${{ inputs.org }}" -s "${{ inputs.space }}"
