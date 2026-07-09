@@ -21,6 +21,9 @@ We recommend installing via the [GitHub marketplace](https://github.com/marketpl
     username: ${{ vars.CF_USERNAME }}
     password: ${{ secrets.CF_PASSWORD }}
     origin: ${{ vars.CF_ORIGIN }}
+    # optional — pin tool versions (defaults shown)
+    cli-version: "8.18.4"   # CF CLI version
+    mbt-version: "latest"   # MBT version, e.g. "1.2.49"
 ```
 
 ## Support, Feedback, Contributing

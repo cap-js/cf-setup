@@ -5,10 +5,18 @@ branding:
   color: blue
 
 inputs:
-  version:
+  cli-version:
     description: The version of the Cloud Foundry CLI to install
     required: false
-    default: "8.17.0"
+    default: "8.18.4"
+  version:
+    description: (Deprecated) Alias for `cli-version`. Prefer `cli-version`.
+    required: false
+    default: ""
+  mbt-version:
+    description: The version of MBT (Multitarget Build Tool) to install, e.g. "1.2.49". Defaults to "latest".
+    required: false
+    default: "latest"
   api:
     description: The Cloud Foundry API endpoint to connect to
     required: true
@@ -36,10 +44,19 @@ runs:
       run: |
         set -euo pipefail
 
-        echo "Using CF_VERSION=${{ inputs.version }}"
+        # `version` is a deprecated alias for `cli-version`; if the caller set
+        # it explicitly, honor that, otherwise use `cli-version`.
+        CF_VERSION='${{ inputs.version }}'
+        if [ -z "$CF_VERSION" ]; then
+          CF_VERSION='${{ inputs.cli-version }}'
+        else
+          echo "::warning::input 'version' is deprecated; use 'cli-version' instead"
+        fi
+
+        echo "Using CF_VERSION=$CF_VERSION"
         echo "Using CF_API=${{ inputs.api }}"
 
-        curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${{ inputs.version }}&source=github" \
+        curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${CF_VERSION}&source=github" \
           -o cf-cli.tgz
 
         mkdir -p cf-cli
@@ -50,7 +67,14 @@ runs:
 
     - name: Install MBT
       shell: bash
-      run: npm install -g mbt
+      run: |
+        echo "Using MBT_VERSION=${{ inputs.mbt-version }}"
+        # npm 12 default-denies dependency install scripts; mbt needs them, so
+        # allow-list it (and its known script-running deps) for this install.
+        # Harmless on npm <12, which ignores the config.
+        npm install -g \
+          --allow-scripts=mbt \
+          "mbt@${{ inputs.mbt-version }}"
 
     - name: Install CF CLI multiapps plugin
       shell: bash
