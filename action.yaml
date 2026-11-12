@@ -27,14 +27,21 @@ inputs:
     description: The Cloud Foundry space to target
     required: true
   username:
-    description: The Cloud Foundry username to authenticate with
-    required: true
-  password:
-    description: The Cloud Foundry password to authenticate with
-    required: true
-  origin:
-    description: Optional UAA origin (identity provider) to use for authentication
+    description: The Cloud Foundry username to authenticate with. Required unless `oidc-audience` is set.
     required: false
+  password:
+    description: The Cloud Foundry password to authenticate with. Required unless `oidc-audience` is set.
+    required: false
+  origin:
+    description: UAA origin (identity provider) to use for authentication. Required when `oidc-audience` is set.
+    required: false
+  oidc-audience:
+    description: >-
+      Opt-in GitHub OIDC login. Set to the audience (issuer URI) expected by the identity provider
+      to authenticate with a GitHub OIDC token instead of username and password.
+      The calling job needs `permissions: id-token: write`.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -81,8 +88,14 @@ runs:
       run: cf install-plugin multiapps -f
 
     - name: Authenticate to Cloud Foundry
+      if: inputs.oidc-audience == ''
       shell: bash
       run: |
+        if [ -z '${{ inputs.username }}' ] || [ -z '${{ inputs.password }}' ]; then
+          echo "::error::Set 'username' and 'password', or 'oidc-audience' for OIDC login."
+          exit 1
+        fi
+
         cf api "${{ inputs.api }}"
         export CF_PASSWORD='${{ inputs.password }}'
         ORIGIN='${{ inputs.origin }}'
@@ -94,3 +107,50 @@ runs:
         fi
 
         cf target -o "${{ inputs.org }}" -s "${{ inputs.space }}"
+
+    - name: Authenticate to Cloud Foundry (GitHub OIDC)
+      if: inputs.oidc-audience != ''
+      shell: bash
+      env:
+        CF_API: ${{ inputs.api }}
+        CF_ORG: ${{ inputs.org }}
+        CF_SPACE: ${{ inputs.space }}
+        CF_ORIGIN: ${{ inputs.origin }}
+        OIDC_AUDIENCE: ${{ inputs.oidc-audience }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+          echo "::error::ACTIONS_ID_TOKEN_REQUEST_URL is not set. The calling job needs 'permissions: id-token: write'."
+          exit 1
+        fi
+        if [ -z "$CF_ORIGIN" ]; then
+          echo "::error::Input 'origin' is required when 'oidc-audience' is set."
+          exit 1
+        fi
+
+        # A trailing slash is a common mistake and would make the audience not match
+        audience=$(jq -rn --arg a "${OIDC_AUDIENCE%/}" '$a|@uri')
+        if ! jwt=$(curl -sSf \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            -H "Accept: application/json; api-version=2.0" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$audience" | jq -r '.value // empty'); then
+          jwt=""
+        fi
+        if [ -z "$jwt" ]; then
+          echo "::error::Could not get a GitHub OIDC token."
+          exit 1
+        fi
+        echo "::add-mask::$jwt"
+
+        for i in {1..5}; do
+          if cf api "$CF_API" \
+              && cf auth --assertion "$jwt" --origin "$CF_ORIGIN" \
+              && cf target -o "$CF_ORG" -s "$CF_SPACE"; then
+            exit 0
+          fi
+          echo "cf login failed, retrying ($i/5)..."
+          sleep 10
+        done
+        echo "::error::cf login failed after 5 attempts."
+        exit 1

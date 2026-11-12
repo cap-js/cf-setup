@@ -26,6 +26,26 @@ We recommend installing via the [GitHub marketplace](https://github.com/marketpl
     mbt-version: "latest"   # MBT version, e.g. "1.2.49"
 ```
 
+#### Login with GitHub OIDC (no username/password)
+
+Set `oidc-audience` to the audience (issuer URI) your identity provider expects. `username` and `password` are then not needed, but `origin` is. The job needs `permissions: id-token: write`.
+
+```yaml
+permissions:
+  id-token: write
+
+steps:
+  - uses: cap-js/cf-setup@v2
+    with:
+      api: ${{ vars.CF_API }}
+      org: ${{ vars.CF_ORG }}
+      space: ${{ vars.CF_SPACE }}
+      origin: ${{ vars.CF_ORIGIN }}
+      oidc-audience: ${{ vars.CF_OIDC_AUDIENCE }}
+```
+
+Without `oidc-audience`, the username/password login is used as before.
+
 ## Support, Feedback, Contributing
 
 This project is open to feature requests/suggestions, bug reports etc. via [GitHub issues](https://github.com/cap-js/cf-setup/issues). Contribution and feedback are encouraged and always welcome. For more information about how to contribute, the project structure, as well as additional contribution information, see our [Contribution Guidelines](CONTRIBUTING.md).
