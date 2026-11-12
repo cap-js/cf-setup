@@ -54,27 +54,31 @@ runs:
   steps:
     - name: Install CF CLI
       shell: bash
+      env:
+        CF_VERSION: ${{ inputs.version }}
+        CF_CLI_VERSION: ${{ inputs.cli-version }}
+        CF_API: ${{ inputs.api }}
+        EXPECTED_SHA256: ${{ inputs.cli-sha256 }}
       run: |
         set -euo pipefail
 
         # `version` is a deprecated alias for `cli-version`; if the caller set
         # it explicitly, honor that, otherwise use `cli-version`.
-        CF_VERSION='${{ inputs.version }}'
         if [ -z "$CF_VERSION" ]; then
-          CF_VERSION='${{ inputs.cli-version }}'
+          CF_VERSION="$CF_CLI_VERSION"
         else
           echo "::warning::input 'version' is deprecated; use 'cli-version' instead"
         fi
 
         echo "Using CF_VERSION=$CF_VERSION"
-        echo "Using CF_API=${{ inputs.api }}"
+        echo "Using CF_API=$CF_API"
 
-        curl -fsSL "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${CF_VERSION}&source=github" \
+        curl -fsSLG "https://packages.cloudfoundry.org/stable?release=linux64-binary&source=github" \
+          --data-urlencode "version=$CF_VERSION" \
           -o cf-cli.tgz
 
         # Verify the archive before extracting it. Use the pinned checksum if given,
         # otherwise the SHA-256 digest GitHub publishes for the release asset.
-        EXPECTED_SHA256='${{ inputs.cli-sha256 }}'
         if [ -z "$EXPECTED_SHA256" ]; then
           EXPECTED_SHA256=$(curl -fsSL \
             -H "Authorization: Bearer ${{ github.token }}" \
@@ -98,14 +102,23 @@ runs:
 
     - name: Install MBT
       shell: bash
+      env:
+        MBT_VERSION: ${{ inputs.mbt-version }}
       run: |
-        echo "Using MBT_VERSION=${{ inputs.mbt-version }}"
+        case "$MBT_VERSION" in
+          *[:/@]*|.*|*.[tT][gG][zZ]|*.[tT][aA][rR]|*.[tT][aA][rR].[gG][zZ])
+            echo "::error::Input 'mbt-version' must refer to a registry version, range or tag."
+            exit 1
+            ;;
+        esac
+
+        echo "Using MBT_VERSION=$MBT_VERSION"
         # npm 12 default-denies dependency install scripts; mbt needs them, so
         # allow-list it (and its known script-running deps) for this install.
         # Harmless on npm <12, which ignores the config.
         npm install -g \
           --allow-scripts=mbt \
-          "mbt@${{ inputs.mbt-version }}"
+          "mbt@$MBT_VERSION"
 
     - name: Install CF CLI multiapps plugin
       shell: bash
@@ -114,23 +127,28 @@ runs:
     - name: Authenticate to Cloud Foundry
       if: inputs.oidc-audience == ''
       shell: bash
+      env:
+        CF_API: ${{ inputs.api }}
+        CF_USERNAME: ${{ inputs.username }}
+        CF_PASSWORD: ${{ inputs.password }}
+        CF_ORIGIN: ${{ inputs.origin }}
+        CF_ORG: ${{ inputs.org }}
+        CF_SPACE: ${{ inputs.space }}
       run: |
-        if [ -z '${{ inputs.username }}' ] || [ -z '${{ inputs.password }}' ]; then
+        if [ -z "$CF_USERNAME" ] || [ -z "$CF_PASSWORD" ]; then
           echo "::error::Set 'username' and 'password', or 'oidc-audience' for OIDC login."
           exit 1
         fi
 
-        cf api "${{ inputs.api }}"
-        export CF_PASSWORD='${{ inputs.password }}'
-        ORIGIN='${{ inputs.origin }}'
+        cf api "$CF_API"
 
-        if [ -n "$ORIGIN" ]; then
-          cf auth "${{ inputs.username }}" --origin "$ORIGIN"
+        if [ -n "$CF_ORIGIN" ]; then
+          cf auth "$CF_USERNAME" --origin "$CF_ORIGIN"
         else
-          cf auth "${{ inputs.username }}"
+          cf auth "$CF_USERNAME"
         fi
 
-        cf target -o "${{ inputs.org }}" -s "${{ inputs.space }}"
+        cf target -o "$CF_ORG" -s "$CF_SPACE"
 
     - name: Authenticate to Cloud Foundry (GitHub OIDC)
       if: inputs.oidc-audience != ''
