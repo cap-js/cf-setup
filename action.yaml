@@ -9,6 +9,12 @@ inputs:
     description: The version of the Cloud Foundry CLI to install
     required: false
     default: "8.18.4"
+  cli-sha256:
+    description: >-
+      Optional SHA-256 of the Linux x86-64 CF CLI archive (`cf8-cli_<version>_linux_x86-64.tgz`).
+      If empty, the digest published on the cloudfoundry/cli GitHub release is used.
+    required: false
+    default: ""
   version:
     description: (Deprecated) Alias for `cli-version`. Prefer `cli-version`.
     required: false
@@ -63,8 +69,26 @@ runs:
         echo "Using CF_VERSION=$CF_VERSION"
         echo "Using CF_API=${{ inputs.api }}"
 
-        curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${CF_VERSION}&source=github" \
+        curl -fsSL "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=${CF_VERSION}&source=github" \
           -o cf-cli.tgz
+
+        # Verify the archive before extracting it. Use the pinned checksum if given,
+        # otherwise the SHA-256 digest GitHub publishes for the release asset.
+        EXPECTED_SHA256='${{ inputs.cli-sha256 }}'
+        if [ -z "$EXPECTED_SHA256" ]; then
+          EXPECTED_SHA256=$(curl -fsSL \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            "https://api.github.com/repos/cloudfoundry/cli/releases/tags/v${CF_VERSION}" \
+            | jq -r --arg n "cf8-cli_${CF_VERSION}_linux_x86-64.tgz" \
+              '.assets[] | select(.name == $n) | .digest // empty' \
+            | sed 's/^sha256://')
+        fi
+        if [ -z "$EXPECTED_SHA256" ]; then
+          echo "::error::Could not determine the expected SHA-256 for CF CLI ${CF_VERSION}. Set the 'cli-sha256' input."
+          exit 1
+        fi
+        echo "${EXPECTED_SHA256}  cf-cli.tgz" | sha256sum -c - \
+          || { echo "::error::SHA-256 mismatch for the downloaded CF CLI archive."; exit 1; }
 
         mkdir -p cf-cli
         tar -xzf cf-cli.tgz -C cf-cli

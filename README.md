@@ -24,7 +24,11 @@ We recommend installing via the [GitHub marketplace](https://github.com/marketpl
     # optional — pin tool versions (defaults shown)
     cli-version: "8.18.4"   # CF CLI version
     mbt-version: "latest"   # MBT version, e.g. "1.2.49"
+    # optional — pin the CF CLI archive checksum (defaults to the digest from the GitHub release)
+    cli-sha256: ""
 ```
+
+The downloaded CF CLI archive is always verified against a SHA-256 checksum before it is extracted.
 
 #### Login with GitHub OIDC (no username/password)
 
