@@ -91,6 +91,11 @@ runs:
       if: inputs.oidc-audience == ''
       shell: bash
       run: |
+        if [ -z '${{ inputs.username }}' ] || [ -z '${{ inputs.password }}' ]; then
+          echo "::error::Set 'username' and 'password', or 'oidc-audience' for OIDC login."
+          exit 1
+        fi
+
         cf api "${{ inputs.api }}"
         export CF_PASSWORD='${{ inputs.password }}'
         ORIGIN='${{ inputs.origin }}'
