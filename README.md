@@ -28,6 +28,8 @@ We recommend installing via the [GitHub marketplace](https://github.com/marketpl
     cli-sha256: ""
 ```
 
+For `mbt-version`, use a registry version, range or tag such as `latest`. URLs, Git specifications and local package paths are rejected.
+
 The downloaded CF CLI archive is always verified against a SHA-256 checksum before it is extracted.
 
 #### Login with GitHub OIDC (no username/password)
