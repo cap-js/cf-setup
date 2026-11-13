@@ -81,11 +81,10 @@ runs:
         # otherwise the SHA-256 digest GitHub publishes for the release asset.
         if [ -z "$EXPECTED_SHA256" ]; then
           EXPECTED_SHA256=$(curl -fsSL \
-            -H "Authorization: Bearer ${{ github.token }}" \
+            -H "${{ github.server_url == 'https://github.com' && format('Authorization: Bearer {0}', github.token) || '' }}" \
             "https://api.github.com/repos/cloudfoundry/cli/releases/tags/v${CF_VERSION}" \
-            | jq -r --arg n "cf8-cli_${CF_VERSION}_linux_x86-64.tgz" \
-              '.assets[] | select(.name == $n) | .digest // empty' \
-            | sed 's/^sha256://')
+            | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).assets.find(a => a.name === process.argv[1])?.digest?.replace(/^sha256:/, "") || ""' \
+              "cf8-cli_${CF_VERSION}_linux_x86-64.tgz")
         fi
         if [ -z "$EXPECTED_SHA256" ]; then
           echo "::error::Could not determine the expected SHA-256 for CF CLI ${CF_VERSION}. Set the 'cli-sha256' input."
@@ -172,11 +171,12 @@ runs:
         fi
 
         # A trailing slash is a common mistake and would make the audience not match
-        audience=$(jq -rn --arg a "${OIDC_AUDIENCE%/}" '$a|@uri')
+        audience=$(node -p 'encodeURIComponent(process.env.OIDC_AUDIENCE.replace(/\/$/, ""))')
         if ! jwt=$(curl -sSf \
             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             -H "Accept: application/json; api-version=2.0" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$audience" | jq -r '.value // empty'); then
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$audience" \
+            | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).value || ""'); then
           jwt=""
         fi
         if [ -z "$jwt" ]; then
